@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Job Execution Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        .loading-container {
+            text-align: center;
+            padding: 50px;
+        }
+        .loading-spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary mb-3">
+        <div class="container">
+            <a class="navbar-brand" href="#">Job Execution Dashboard</a>
+            <span class="navbar-text">Welcome, {{ username }} | <a href="{{ url_for('logout') }}" class="text-light">Logout</a></span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 class="text-center">Job Execution Status by Month</h2>
+        <div class="loading-container" id="loading-piecharts">
+            <div class="loading-spinner"></div>
+            <p>Loading Pie Charts...</p>
+        </div>
+        <div class="row" id="piecharts-container" style="display: none;"></div>
+
+        <h2 class="text-center mt-4">Average Execution Time per Month</h2>
+        <div class="loading-container" id="loading-linechart">
+            <div class="loading-spinner"></div>
+            <p>Loading Execution Time Data...</p>
+        </div>
+        <div class="card p-3 shadow w-100" id="linechart-container" style="display: none;">
+            <div id="linechart" style="width: 100%; height: 500px;"></div>
+        </div>        
+
+        <h2 class="text-center mt-4">Job Execution Summary</h2>
+        <div class="loading-container" id="loading-summary">
+            <div class="loading-spinner"></div>
+            <p>Loading Job Summary...</p>
+        </div>
+        <div class="row" id="job-summary-container" style="display: none;"></div>
+    </div>
+
+    <script type="text/javascript">
+        google.charts.load('current', {'packages':['corechart']});
+        google.charts.setOnLoadCallback(drawCharts);
+        setTimeout(drawCharts, 500);
+
+        function drawCharts() {
+            $.ajax({
+                url: "/chart-data",
+                dataType: "json",
+                success: function(data) {
+                    console.log("Chart Data Response:", data);
+                    if (data.error) {
+                        console.error("Error fetching chart data:", data.error);
+                        return;
+                    }
+                    drawExecutionTimeChart(data.execution_time);
+                    drawPieCharts(data.pie_charts);
+                },
+                error: function() {
+                    console.error("Failed to load chart data");
+                }
+            });
+            loadJobSummary();
+        }
+        function drawPieCharts(pieChartsData) {
+            var container = document.getElementById("piecharts-container");
+            container.innerHTML = "";
+
+            const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            monthOrder.forEach(function (month) {
+                if (!Array.isArray(pieChartsData[month]) || !pieChartsData[month]?.[1]) {
+                    console.warn(`⚠ No data available for ${month}`);
+                    return;
+                }
+
+                var chartDiv = document.createElement("div");
+                chartDiv.className = "col-md-4 mb-4";
+                chartDiv.innerHTML = `
+                    <div class="card shadow">
+                        <div id="piechart-${month}" class="card-body" style="width: 100%; height: 300px; min-height: 300px;"></div>
+                    </div>`;
+                container.appendChild(chartDiv);
+
+                console.log("Drawing pie chart for:", month, pieChartsData[month]);
+                var data = google.visualization.arrayToDataTable(pieChartsData[month]);
+
+                var options = { 
+                    title: `Job Execution - ${month}`, 
+                    pieHole: 0.4, 
+                    chartArea: { width: "90%", height: "80%" },
+                    height: 300,
+                    width: "100%",
+                    legend: { position: "bottom" }
+                };
+
+                var chart = new google.visualization.PieChart(document.getElementById(`piechart-${month}`));
+                setTimeout(() => chart.draw(data, options), 100);
+            });
+
+            document.getElementById("loading-piecharts").style.display = "none";
+            container.style.display = "flex";
+        }
+
+
+        function drawExecutionTimeChart(jsonData) {
+            var container = document.getElementById("linechart");
+
+            document.getElementById("linechart-container").style.display = "block";
+            container.style.width = "100%";
+            container.style.height = "500px";
+
+            setTimeout(function () {
+                var data = google.visualization.arrayToDataTable(jsonData);
+
+                var options = {
+                    title: 'Average Execution Time per Month',
+                    curveType: 'function',
+                    legend: { position: 'bottom' },
+                    hAxis: { title: 'Month' },
+                    vAxis: { title: 'Time (ms)' },
+                    chartArea: { left: 50, top: 50, width: "90%", height: "75%" },
+                    height: 500,
+                    width: container.clientWidth,
+                    series: { 
+                        0: { color: 'blue' }, 
+                        1: { color: 'red' } 
+                    }
+                };
+
+                var chart = new google.visualization.LineChart(container);
+                chart.draw(data, options);
+
+                document.getElementById("loading-linechart").style.display = "none";
+
+                window.addEventListener("resize", function() {
+                    options.width = container.clientWidth;
+                    chart.draw(data, options);
+                });
+
+            }, 100);
+        }
+
+
+
+        function loadJobSummary() {
+            $.ajax({
+                url: "/job-summary",
+                dataType: "json",
+                success: function(data) {
+                    var container = document.getElementById("job-summary-container");
+                    container.innerHTML = "";
+
+                    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    monthOrder.forEach(function(month) {
+                        if (data.tables[month] && data.tables[month].length > 1) {
+                            var section = document.createElement("div");
+                            section.className = "col-md-6";
+                            section.innerHTML = `<h4>Job Summary - ${month}</h4><table class="table table-bordered table-striped">
+                                <thead><tr><th>Starter Type</th><th>Job Type</th><th>Total Jobs</th></tr></thead>
+                                <tbody>${data.tables[month].slice(1).map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+                            container.appendChild(section);
+                        }
+                    });
+
+                    document.getElementById("loading-summary").style.display = "none";
+                    container.style.display = "flex";
+                },
+                error: function() {
+                    console.error("Failed to load job summary data");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
