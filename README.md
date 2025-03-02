@@ -1,7 +1,7 @@
 # vsk projekta darbs
 
 
-1. git clone https://github.com/lietotajvards/vsk.git
+1. git clone https://github.com/barm1969/vsk.git
    
 2. cd vsk
    
