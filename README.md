@@ -1,14 +1,14 @@
 # vsk projekta darbs
 
-
 1. git clone https://github.com/barm1969/vsk.git
-   
-2. cd vsk
-   
-3. python -m venv venv
-   
-4. pip install -r requirements.txt
+   You have to download the database separately.
 
-5. python app.py
+3. cd vsk
+   
+4. python -m venv venv
+   
+5. pip install -r requirements.txt
 
-6. http://127.0.0.1:5000
+6. python app.py
+
+7. http://127.0.0.1:5000
