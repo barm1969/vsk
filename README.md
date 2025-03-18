@@ -1,7 +1,6 @@
 # vsk projekta darbs
 
 1. git clone https://github.com/barm1969/vsk.git
-   You have to download the database separately.
 
 3. cd vsk
    
